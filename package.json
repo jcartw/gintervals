@@ -13,7 +13,9 @@
   },
   "keywords": [
     "intervals",
-    "merge"
+    "richtext",
+    "draftjs",
+    "textrun"
   ],
   "author": "Justin Cartwright",
   "license": "MIT",

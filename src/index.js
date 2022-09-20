@@ -1,29 +1,39 @@
 const crypto = require("crypto");
+const assert = require("assert");
 
-module.exports.merge = (data) => {
+module.exports.merge = (data, opts = {}) => {
   // deep copy array
   let intervals = JSON.parse(JSON.stringify(data));
 
   // add `isInputData` flag to input data
-  intervals = intervals.map((x) => ({
-    start: x.start,
-    end: x.end,
-    content: x.content,
-    isInputData: true
-  }));
+  intervals = intervals
+    .map((x) => ({
+      start: x.start,
+      end: x.end,
+      content: x.content,
+      isInputData: true
+    }))
+    .sort((a, b) => {
+      const diff = a.start - b.start;
+      // sort input data first
+      if (diff === 0) {
+        return (a.isInputData ? 0 : 1) - (b.isInputData ? 0 : 1);
+      }
+      return diff;
+    });
 
-  // create intervals for every unique start and end point
   const uniquePoints = intervals
     .reduce((a, c) => {
+      if (c.start > 0) {
+        a.push(c.start - 1);
+      }
       a.push(c.start);
       a.push(c.end);
       return a;
     }, [])
     .filter((x, idx, self) => self.indexOf(x) === idx)
     .sort((a, b) => a - b);
-  if (uniquePoints.length === 1) {
-    throw new Error("Invalid number of endpoints to create intervals");
-  }
+
   const fineIntervals = [];
   for (let k = 1; k < uniquePoints.length; k++) {
     fineIntervals.push({
@@ -32,6 +42,14 @@ module.exports.merge = (data) => {
       content: null,
       isInputData: false
     });
+    if (k === uniquePoints.length - 1) {
+      fineIntervals.push({
+        start: uniquePoints[k],
+        end: uniquePoints[k],
+        content: null,
+        isInputData: false
+      });
+    }
   }
 
   // build up output list
@@ -62,11 +80,6 @@ module.exports.merge = (data) => {
       const contentArray = Object.keys(contentMap)
         .map((key) => contentMap[key])
         .filter((x) => x.end >= currentInterval.end);
-      // contentArray.sort((a, b) => a.content > b.content);
-      // currentInterval.content = contentArray.reduce((a, c) => {
-      //   a += (a ? "-" : "") + c.content;
-      //   return a;
-      // }, "");
       currentInterval.content = contentArray.map((x) => x.content);
     }
   }
@@ -77,31 +90,85 @@ module.exports.merge = (data) => {
     .map((x) => ({ start: x.start, end: x.end, content: x.content }));
 
   // merge equal intervals
-  const output = [unmerged[0]];
+  const merged = [unmerged[0]];
   for (let k = 1; k < unmerged.length; k++) {
     const { start, end, content } = unmerged[k];
-    const lastEnd = output[output.length - 1].end;
-    const lastContent = output[output.length - 1].content;
+    const lastEnd = merged[merged.length - 1].end;
+    const lastContent = merged[merged.length - 1].content;
 
-    if (
-      start <= lastEnd &&
-      JSON.stringify(content) === JSON.stringify(lastContent)
-    ) {
+    if (start <= lastEnd && areEqual(content, lastContent)) {
       // if overlapping merge them
-      output[output.length - 1].end = Math.max(lastEnd, end);
+      merged[merged.length - 1].end = Math.max(lastEnd, end);
     } else {
       // otherwise add interval to output array
-      output.push({ ...unmerged[k] });
+      merged.push({ ...unmerged[k] });
     }
+  }
+
+  // correct for cases where ends are overlapping with next start
+  for (let k = 0; k < merged.length - 1; k++) {
+    if (merged[k].end === merged[k + 1].start) {
+      merged[k].end -= 1;
+    }
+  }
+
+  // remove null entries from content array
+  return merged.map((x) => ({
+    start: x.start,
+    end: x.end,
+    contentList: x.content.filter((c) => !!c)
+  }));
+};
+
+module.exports.decorateText = (input) => {
+  const { text, intervals } = input;
+  return intervals.map((x, idx) => {
+    let segment = text.slice(x.start, x.end + 1);
+    return {
+      text: segment,
+      contentList: x.contentList
+    };
+  });
+};
+
+module.exports.fillGaps = (input) => {
+  const { start, end } = input;
+  const intervals = input.intervals
+    .map((x) => x) // make copy
+    .sort((a, b) => {
+      const diff = a.start - b.start;
+      if (diff === 0) return a.end - b.end;
+      return diff;
+    });
+
+  const output = [];
+  if (intervals[0].start > start) {
+    output.push({ start, end: intervals[0].start - 1, content: null });
+  }
+  output.push(intervals[0]);
+  for (let k = 1; k < intervals.length; k++) {
+    if (intervals[k].start - intervals[k - 1].end > 1) {
+      output.push({
+        start: intervals[k - 1].end + 1,
+        end: intervals[k].start - 1,
+        content: null
+      });
+    }
+    output.push(intervals[k]);
+  }
+  const last = output[output.length - 1];
+  if (last.end < end) {
+    output.push({ start: last.end + 1, end, content: null });
   }
 
   return output;
 };
 
-module.exports.decorateText = (input) => {
-  const { text, intervals } = input;
-  return intervals.map((x) => ({
-    text: text.slice(x.start, x.end),
-    content: x.content
-  }));
-};
+function areEqual(a, b) {
+  try {
+    assert.deepStrictEqual(a, b);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
