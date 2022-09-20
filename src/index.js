@@ -142,23 +142,27 @@ module.exports.fillGaps = (input) => {
     });
 
   const output = [];
-  if (intervals[0].start > start) {
-    output.push({ start, end: intervals[0].start - 1, content: null });
-  }
-  output.push(intervals[0]);
-  for (let k = 1; k < intervals.length; k++) {
-    if (intervals[k].start - intervals[k - 1].end > 1) {
-      output.push({
-        start: intervals[k - 1].end + 1,
-        end: intervals[k].start - 1,
-        content: null
-      });
+  if (intervals.length > 0) {
+    if (intervals[0].start > start) {
+      output.push({ start, end: intervals[0].start - 1, content: null });
     }
-    output.push(intervals[k]);
-  }
-  const last = output[output.length - 1];
-  if (last.end < end) {
-    output.push({ start: last.end + 1, end, content: null });
+    output.push(intervals[0]);
+    for (let k = 1; k < intervals.length; k++) {
+      if (intervals[k].start - intervals[k - 1].end > 1) {
+        output.push({
+          start: intervals[k - 1].end + 1,
+          end: intervals[k].start - 1,
+          content: null
+        });
+      }
+      output.push(intervals[k]);
+    }
+    const last = output[output.length - 1];
+    if (last.end < end) {
+      output.push({ start: last.end + 1, end, content: null });
+    }
+  } else {
+    output.push({ start, end, content: null });
   }
 
   return output;

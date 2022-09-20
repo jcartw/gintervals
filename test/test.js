@@ -198,5 +198,39 @@ describe("General Intervals", () => {
         assert.deepStrictEqual(decorated[k].contentList, contentList[k]);
       }
     });
+    it("Should process text with without any styling", () => {
+      const text = "This is plain text";
+      const inlineStyleRanges = [];
+      const entityRanges = [];
+
+      let intervals = inlineStyleRanges
+        .map((x) => ({
+          start: x.offset,
+          end: x.offset + x.length - 1,
+          content: { style: x.style, entityKey: null }
+        }))
+        .concat(
+          entityRanges.map((x) => ({
+            start: x.offset,
+            end: x.offset + x.length - 1,
+            content: { style: null, entityKey: x.key }
+          }))
+        );
+
+      const filled = gintervals.fillGaps({
+        intervals,
+        start: 0,
+        end: text.length - 1
+      });
+
+      expect(filled.length).to.equal(1);
+      expect(filled[0].start).to.equal(0);
+      expect(filled[0].end).to.equal(text.length - 1);
+
+      intervals = gintervals.merge(filled);
+      const decorated = gintervals.decorateText({ intervals, text });
+      expect(decorated.length).to.equal(1);
+      expect(decorated[0].text).to.equal(text);
+    });
   });
 });
