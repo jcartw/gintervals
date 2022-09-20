@@ -5,6 +5,21 @@ module.exports.merge = (data, opts = {}) => {
   // deep copy array
   let intervals = JSON.parse(JSON.stringify(data));
 
+  // handle zero-length text case
+  if (
+    intervals.length === 1 &&
+    intervals[0].start === 0 &&
+    intervals[0].end === 0
+  ) {
+    return [
+      {
+        start: 0,
+        end: 0,
+        contentList: intervals[0].content == null ? [] : [intervals[0].content]
+      }
+    ];
+  }
+
   // add `isInputData` flag to input data
   intervals = intervals
     .map((x) => ({
@@ -122,8 +137,9 @@ module.exports.merge = (data, opts = {}) => {
 
 module.exports.decorateText = (input) => {
   const { text, intervals } = input;
+
   return intervals.map((x, idx) => {
-    let segment = text.slice(x.start, x.end + 1);
+    let segment = text.slice(x.start, x.end + 1) ?? "";
     return {
       text: segment,
       contentList: x.contentList
@@ -132,7 +148,10 @@ module.exports.decorateText = (input) => {
 };
 
 module.exports.fillGaps = (input) => {
-  const { start, end } = input;
+  // clamp start and end indices at 0
+  const start = Math.max(input.start, 0);
+  const end = Math.max(input.end, 0);
+
   const intervals = input.intervals
     .map((x) => x) // make copy
     .sort((a, b) => {
