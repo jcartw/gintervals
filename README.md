@@ -33,6 +33,8 @@ With this set of inline styles the expected rendering is:
 
 - The last word is <strong>bold-<em>italic-<u>underlined</u></em><strong>
 
+![rendered text](./assets/rendered.png)
+
 To transform the text string above into an array of segments with the
 corresponding styling metadata, `gintervals` can be used as follows:
 
