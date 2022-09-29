@@ -198,6 +198,68 @@ describe("General Intervals", () => {
         assert.deepStrictEqual(decorated[k].contentList, contentList[k]);
       }
     });
+
+    it("Should process text with single white space entities", () => {
+      const text = "Here is A: . Next is B: . Next, we have C: . Finally D: ";
+      const inlineStyleRanges = [];
+
+      const entityRanges = [
+        { offset: 10, length: 1, key: 0 },
+        { offset: 23, length: 1, key: 1 },
+        { offset: 42, length: 1, key: 2 },
+        { offset: 55, length: 1, key: 3 }
+      ];
+
+      let intervals = inlineStyleRanges
+        .map((x) => ({
+          start: x.offset,
+          end: x.offset + x.length - 1,
+          content: { style: x.style, entityKey: null }
+        }))
+        .concat(
+          entityRanges.map((x) => ({
+            start: x.offset,
+            end: x.offset + x.length - 1,
+            content: { style: null, entityKey: x.key }
+          }))
+        );
+
+      const filled = gintervals.fillGaps({
+        intervals,
+        start: 0,
+        end: text.length - 1
+      });
+
+      intervals = gintervals.merge(filled);
+
+      const decorated = gintervals.decorateText({ intervals, text });
+
+      expect(decorated.length).to.equal(8);
+      const textList = [
+        "Here is A:",
+        " ",
+        ". Next is B:",
+        " ",
+        ". Next, we have C:",
+        " ",
+        ". Finally D:",
+        " "
+      ];
+      const contentList = [
+        [],
+        [{ style: null, entityKey: 0 }],
+        [],
+        [{ style: null, entityKey: 1 }],
+        [],
+        [{ style: null, entityKey: 2 }],
+        [],
+        [{ style: null, entityKey: 3 }]
+      ];
+      for (let k = 0; k < textList.length; k++) {
+        expect(decorated[k].text).to.equal(textList[k]);
+        assert.deepStrictEqual(decorated[k].contentList, contentList[k]);
+      }
+    });
     it("Should process text with without any styling", () => {
       const text = "This is plain text";
 

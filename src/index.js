@@ -67,6 +67,17 @@ module.exports.merge = (data, opts = {}) => {
     }
   }
 
+  // add intervals with same start and ends
+  for (let x of intervals) {
+    if (x.start === x.end)
+      fineIntervals.push({
+        start: x.start,
+        end: x.end,
+        content: null,
+        isInputData: false
+      });
+  }
+
   // build up output list
   const preout = fineIntervals.concat(intervals).sort((a, b) => {
     const diff = a.start - b.start;
